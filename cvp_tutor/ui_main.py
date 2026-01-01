@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import threading
 import time
+import webbrowser
+import subprocess
+import shutil
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -100,6 +103,10 @@ class MainWindow(QMainWindow):
         self.learning_part_combo.currentIndexChanged.connect(self._part_changed)
         open_btn = QPushButton("Open MIDI")
         open_btn.clicked.connect(self.open_file)
+        self.sheet_btn = QPushButton("Open Sheet Music Folder")
+        self.sheet_btn.clicked.connect(self.open_sheet_music)
+        self.export_btn = QPushButton("Export to MusicXML (MuseScore)")
+        self.export_btn.clicked.connect(self.export_musicxml)
         self.play_btn = QPushButton("Play")
         self.play_btn.clicked.connect(self.start_playback)
         self.stop_btn = QPushButton("Stop")
@@ -133,8 +140,10 @@ class MainWindow(QMainWindow):
 
         f_layout.addWidget(open_btn, 0, 0)
         f_layout.addWidget(self.file_label, 0, 1, 1, 3)
+        f_layout.addWidget(self.sheet_btn, 1, 0)
+        f_layout.addWidget(self.export_btn, 1, 1)
         f_layout.addWidget(QLabel("Learning Part"), 1, 0)
-        f_layout.addWidget(self.learning_part_combo, 1, 1)
+        f_layout.addWidget(self.learning_part_combo, 1, 2)
         f_layout.addWidget(self.play_btn, 2, 0)
         f_layout.addWidget(self.stop_btn, 2, 1)
         f_layout.addWidget(self.tutor_toggle, 2, 2, 1, 2)
@@ -219,6 +228,39 @@ class MainWindow(QMainWindow):
         self.learning_track = part.track_index
         self.current_expected = set()
         self.keyboard.set_expected(set())
+
+    def open_sheet_music(self) -> None:
+        url = "https://drive.google.com/drive/folders/0B6bODXWhwMjKdDU3U1p3bjFmLTA?resourcekey=0-aQ1yhQwnHbthIVjs5_ry_g&usp=sharing"
+        webbrowser.open(url)
+        self.status.setText("Opened sheet music folder.")
+
+    def _find_musescore(self) -> Optional[str]:
+        candidates = [
+            shutil.which("MuseScore4.exe"),
+            shutil.which("MuseScore3.exe"),
+            shutil.which("MuseScore.exe"),
+            "C:\\Program Files\\MuseScore 4\\bin\\MuseScore4.exe",
+            "C:\\Program Files\\MuseScore 3\\bin\\MuseScore3.exe",
+        ]
+        for c in candidates:
+            if c and Path(c).exists():
+                return c
+        return None
+
+    def export_musicxml(self) -> None:
+        if not self.midi_file:
+            self.status.setText("Open a MIDI file first.")
+            return
+        exe = self._find_musescore()
+        if not exe:
+            self.status.setText("MuseScore not found. Install MuseScore 3/4 to export.")
+            return
+        out_path = self.midi_file.with_suffix(".musicxml")
+        try:
+            subprocess.run([exe, "-o", str(out_path), str(self.midi_file)], check=True)
+            self.status.setText(f"Exported MusicXML: {out_path.name}")
+        except Exception as exc:
+            self.status.setText(f"Export failed: {exc}")
 
     def _tempo_changed(self, value: int) -> None:
         self.tempo_label.setText(f"Tempo {value/100:.2f}x")
