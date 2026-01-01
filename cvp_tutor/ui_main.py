@@ -315,18 +315,8 @@ class MainWindow(QMainWindow):
         pdf_path = self.midi_file.with_suffix(".pdf")
         try:
             subprocess.run([exe, "-o", str(pdf_path), str(self.midi_file)], check=True)
-            loaded_in_app = False
-            try:
-                self.score.load_pdf(pdf_path)
-                loaded_in_app = True
-            except Exception as exc:
-                loaded_in_app = False
-                self.score.label.setText(f"Score view failed in-app: {exc}")
-            if not loaded_in_app:
-                webbrowser.open(pdf_path.as_uri())
-                self.status.setText(f"Opened score externally: {pdf_path.name}")
-            else:
-                self.status.setText(f"Score rendered: {pdf_path.name}")
+            self.score.load_pdf(pdf_path)
+            self.status.setText(f"Score rendered (opens externally): {pdf_path.name}")
         except Exception as exc:
             self.score.label.setText(f"Score export failed: {exc}")
 

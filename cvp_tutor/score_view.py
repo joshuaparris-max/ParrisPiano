@@ -1,16 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
-
-# Lazy import to avoid crashing if WebEngine is missing
-try:  # pragma: no cover
-    from PyQt6.QtWebEngineWidgets import QWebEngineView
-except Exception as exc:  # pragma: no cover
-    QWebEngineView = None
-    _IMPORT_ERROR = exc
-else:
-    _IMPORT_ERROR = None
+import webbrowser
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
 
 
 class ScoreView(QWidget):
@@ -18,31 +10,27 @@ class ScoreView(QWidget):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.label = QLabel()
+        self.label = QLabel("Score will open externally (PDF).")
+        self.button = QPushButton("Open latest score")
+        self.button.setEnabled(False)
+        self.button.clicked.connect(self.open_external)
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
-        if QWebEngineView is None:
-            self.label.setText(f"Score view unavailable: { _IMPORT_ERROR }")
-            self.view = None
-            layout.addWidget(self.label)
-        else:
-            try:
-                self.view = QWebEngineView()
-                layout.addWidget(self.view)
-                self.label.setText("No score loaded")
-                layout.addWidget(self.label)
-            except Exception as exc:  # pragma: no cover
-                self.view = None
-                self.label.setText(f"Score view disabled (WebEngine init failed): {exc}")
-                layout.addWidget(self.label)
+        layout.addWidget(self.label)
+        layout.addWidget(self.button)
         self.setLayout(layout)
+        self.last_pdf: Path | None = None
 
     def load_pdf(self, path: Path) -> None:
         if not path.exists():
             self.label.setText("Score PDF not found.")
+            self.button.setEnabled(False)
             return
-        if self.view is None:
-            self.label.setText("Score view unavailable (WebEngine import failed).")
-            return
-        self.view.load(path.as_uri())
-        self.label.setText(f"Score: {path.name}")
+        self.last_pdf = path
+        self.button.setEnabled(True)
+        self.label.setText(f"Score ready: {path.name} (opens externally)")
+        self.open_external()
+
+    def open_external(self) -> None:
+        if self.last_pdf and self.last_pdf.exists():
+            webbrowser.open(self.last_pdf.as_uri())
