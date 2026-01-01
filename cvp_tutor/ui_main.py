@@ -40,6 +40,7 @@ from .performance import PerformanceCapture
 from .keyboard_view import KeyboardView
 from .piano_roll import PianoRollView
 from .scoring import score_performance
+from .score_view import ScoreView
 
 
 def _clamp_note(value: int) -> int:
@@ -185,8 +186,10 @@ class MainWindow(QMainWindow):
         self.keyboard = KeyboardView()
         self.keyboard.setStyleSheet("background: #f7f7f7; border: 1px solid #d0d0d0;")
         self.roll = PianoRollView()
+        self.score = ScoreView()
         tabs.addTab(self.keyboard, "Keyboard")
         tabs.addTab(self.roll, "Piano Roll")
+        tabs.addTab(self.score, "Score")
         layout.addWidget(tabs)
 
         # Status
@@ -244,6 +247,7 @@ class MainWindow(QMainWindow):
         self.parts, self.events, self.total_time = parse_midi(path)
         self.performance.reset()
         count = self.roll.load_notes(self.events, self.learning_channel, self.learning_track, self.total_time, show_all=True)
+        self.render_score_pdf()
         self.file_label.setText(f"{path.name} ({self.total_time:.1f}s)")
         self.status.setText(f"Loaded {count} notes into Piano Roll")
         self.learning_part_combo.clear()
@@ -265,6 +269,7 @@ class MainWindow(QMainWindow):
         if self.midi_file:
             count = self.roll.load_notes(self.events, self.learning_channel, self.learning_track, self.total_time, show_all=True)
             self.status.setText(f"Piano Roll notes: {count}")
+            self.render_score_pdf()
 
     def open_sheet_music(self) -> None:
         url = "https://drive.google.com/drive/folders/0B6bODXWhwMjKdDU3U1p3bjFmLTA?resourcekey=0-aQ1yhQwnHbthIVjs5_ry_g&usp=sharing"
@@ -298,6 +303,22 @@ class MainWindow(QMainWindow):
             self.status.setText(f"Exported MusicXML: {out_path.name}")
         except Exception as exc:
             self.status.setText(f"Export failed: {exc}")
+
+    def render_score_pdf(self) -> None:
+        """Export MIDI to PDF via MuseScore and load in Score tab."""
+        if not self.midi_file:
+            return
+        exe = self._find_musescore()
+        if not exe:
+            self.score.label.setText("MuseScore not found. Install MuseScore 3/4 for notation.")
+            return
+        pdf_path = self.midi_file.with_suffix(".pdf")
+        try:
+            subprocess.run([exe, "-o", str(pdf_path), str(self.midi_file)], check=True)
+            self.score.load_pdf(pdf_path)
+            self.status.setText(f"Score rendered: {pdf_path.name}")
+        except Exception as exc:
+            self.score.label.setText(f"Score export failed: {exc}")
 
     def _tempo_changed(self, value: int) -> None:
         self.tempo_label.setText(f"Tempo {value/100:.2f}x")
