@@ -85,3 +85,13 @@ class MidiIO:
                 if (strict and seen == expected_notes) or (not strict and expected_notes.issubset(seen)):
                     return True
         return False
+
+    def send_test_tone(self, channel: int = 0, duration_ms: int = 400, velocity: int = 96) -> None:
+        if not self.output_port:
+            logger.warning("No MIDI OUT selected for test tone")
+            return
+        note = 60
+        on = mido.Message("note_on", note=note, velocity=velocity, channel=channel)
+        off = mido.Message("note_off", note=note, velocity=0, channel=channel)
+        self.send(on)
+        threading.Timer(duration_ms / 1000.0, lambda: self.send(off)).start()
