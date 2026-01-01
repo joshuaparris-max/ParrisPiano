@@ -25,10 +25,13 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from .midi_engine import MidiEngine
-from .midi_parser import load_midi
+from .midi_io import MidiIO
+from .midi_parse import parse_midi
 from .models import MidiEvent, MidiPart
 from .tutor_engine import TutorEngine
+from .playback import PlaybackEngine
+from .timeline import group_expected
+from .performance import PerformanceCapture
 
 
 def _clamp_note(value: int) -> int:
@@ -42,8 +45,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("CVP Tutor")
         self.resize(1000, 620)
-        self.engine = MidiEngine()
+        self.engine = MidiIO()
+        self.playback = PlaybackEngine(self.engine)
         self.tutor = TutorEngine()
+        self.performance = PerformanceCapture(self.engine)
         self.midi_file: Optional[Path] = None
         self.parts: List[MidiPart] = []
         self.events: List[MidiEvent] = []
@@ -175,7 +180,7 @@ class MainWindow(QMainWindow):
     def connect_devices(self) -> None:
         input_name = self.in_combo.currentText() or None
         output_name = self.out_combo.currentText() or None
-        self.engine.open_ports(input_name, output_name)
+        self.engine.open(input_name, output_name)
         self.status.setText(f"Connected IN={input_name or 'None'} OUT={output_name or 'None'}")
 
     def test_tone(self) -> None:
@@ -190,7 +195,8 @@ class MainWindow(QMainWindow):
 
     def load_file(self, path: Path) -> None:
         self.midi_file = path
-        self.parts, self.events, self.total_time = load_midi(path)
+        self.parts, self.events, self.total_time = parse_midi(path)
+        self.performance.reset()
         self.file_label.setText(f"{path.name} ({self.total_time:.1f}s)")
         self.learning_part_combo.clear()
         for idx, part in enumerate(self.parts):
@@ -220,28 +226,29 @@ class MainWindow(QMainWindow):
         if self.play_thread and self.play_thread.is_alive():
             self.status.setText("Already playing.")
             return
+        tempo_mult = self.tempo_slider.value() / 100.0
+        transpose = self.transpose_slider.value()
+        loop_start = self.loop_start_spin.value()
+        loop_end = self.loop_end_spin.value() or None
+        tutor_on = self.tutor_toggle.isChecked()
+        chords = []
+        if tutor_on:
+            chords = group_expected(self.events, self.learning_channel, self.learning_track)
         self.stop_flag.clear()
-        self.play_thread = threading.Thread(target=self._playback_loop, daemon=True)
+        self.play_thread = threading.Thread(
+            target=self._playback_loop,
+            args=(tempo_mult, transpose, loop_start, loop_end, tutor_on, chords),
+            daemon=True,
+        )
         self.play_thread.start()
 
     def stop_playback(self) -> None:
         self.stop_flag.set()
         self.status.setText("Stopped.")
 
-    def _playback_loop(self) -> None:
-        tempo_mult = self.tempo_slider.value() / 100.0
-        transpose = self.transpose_slider.value()
-        tutor_on = self.tutor_toggle.isChecked()
-        loop_start = self.loop_start_spin.value()
-        loop_end = self.loop_end_spin.value() or None
-
-        chords = []
-        if tutor_on:
-            chords = self.tutor.build_expected(self.events, self.learning_channel, self.learning_track)
+    def _playback_loop(self, tempo_mult: float, transpose: int, loop_start: float, loop_end: Optional[float], tutor_on: bool, chords) -> None:
         chord_idx = 0
-
         start_wall = time.perf_counter()
-        last_event_time = 0.0
         for ev in self.events:
             if self.stop_flag.is_set():
                 break
@@ -249,30 +256,23 @@ class MainWindow(QMainWindow):
                 continue
             if loop_end and ev.time > loop_end:
                 break
-
             target_time = start_wall + (ev.time - loop_start) / tempo_mult
             while not self.stop_flag.is_set() and time.perf_counter() < target_time:
                 time.sleep(0.001)
-
             msg = ev.message.copy()
             if msg.type in {"note_on", "note_off"} and transpose:
                 msg.note = _clamp_note(msg.note + transpose)
-
             is_learning_part = (self.learning_channel is None or msg.channel == self.learning_channel) and (
                 self.learning_track is None or ev.track_index == self.learning_track
             )
-
             if tutor_on and is_learning_part and msg.type == "note_on" and chord_idx < len(chords):
                 expected = chords[chord_idx]
                 chord_idx += 1
                 matched = self.engine.wait_for_notes(expected.notes, timeout=10, strict=self.tutor.strict)
                 status = "matched" if matched else "timeout"
                 self.status_changed.emit(f"Tutor: expected {expected.notes} -> {status}")
-                continue  # do not play the learning part automatically
-
+                continue
             self.engine.send(msg)
-            last_event_time = ev.time
-
         self.status_changed.emit("Playback finished.")
 
     def _update_status(self, text: str) -> None:
@@ -289,4 +289,3 @@ def run() -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     run()
-

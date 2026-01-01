@@ -1,6 +1,6 @@
 from pathlib import Path
 import mido
-from cvp_tutor import midi_parser
+from cvp_tutor import midi_parse
 
 
 def test_load_midi_basic(tmp_path: Path):
@@ -13,7 +13,7 @@ def test_load_midi_basic(tmp_path: Path):
     midi_path = tmp_path / "test.mid"
     mid.save(midi_path)
 
-    parts, events, total = midi_parser.load_midi(midi_path)
+    parts, events, total = midi_parse.parse_midi(midi_path)
     assert len(parts) == 1
     assert len(events) == 2
     assert total > 0
