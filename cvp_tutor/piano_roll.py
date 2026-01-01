@@ -39,6 +39,7 @@ class PianoRollView(QWidget):
         self.clear()
         note_starts: Dict[Tuple[int, int | None], float] = {}
         notes_seen: List[int] = []
+        intervals: List[Tuple[int, float, float]] = []
         for ev in events:
             msg = ev.message
             if msg.type == "note_on" and msg.velocity > 0:
@@ -53,11 +54,11 @@ class PianoRollView(QWidget):
                 if key in note_starts:
                     start = note_starts.pop(key)
                     end = ev.time
-                    self._add_note_rect(key[0], start, max(end - start, 0.05))
+                    intervals.append((key[0], start, max(end - start, 0.05)))
 
         # Any lingering note_on without note_off: draw small blips
         for (note, _), start in note_starts.items():
-            self._add_note_rect(note, start, 0.1)
+            intervals.append((note, start, 0.1))
 
         if notes_seen:
             self.min_note = min(notes_seen)
@@ -65,6 +66,9 @@ class PianoRollView(QWidget):
         else:
             self.min_note = 21
             self.max_note = 108
+
+        for note, start, dur in intervals:
+            self._add_note_rect(note, start, dur)
 
         # Scene bounds
         width = total_time * self.scale_x + 200
