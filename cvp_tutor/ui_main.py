@@ -7,6 +7,7 @@ import subprocess
 import shutil
 from pathlib import Path
 from typing import List, Optional, Tuple
+from collections import Counter
 
 import mido
 from loguru import logger
@@ -38,6 +39,7 @@ from .timeline import group_expected
 from .performance import PerformanceCapture
 from .keyboard_view import KeyboardView
 from .piano_roll import PianoRollView
+from .scoring import score_performance
 
 
 def _clamp_note(value: int) -> int:
@@ -47,6 +49,7 @@ def _clamp_note(value: int) -> int:
 class MainWindow(QMainWindow):
     status_changed = pyqtSignal(str)
     expected_changed = pyqtSignal(float, object)  # time_sec, notes set
+    score_changed = pyqtSignal(str)
 
     def __init__(self) -> None:
         super().__init__()
@@ -58,6 +61,7 @@ class MainWindow(QMainWindow):
         self.performance = PerformanceCapture(self.engine)
         self.engine.register_listener(self.on_midi_in)
         self.expected_changed.connect(self.on_expected_changed)
+        self.score_changed.connect(self.on_score_changed)
         self.midi_file: Optional[Path] = None
         self.parts: List[MidiPart] = []
         self.events: List[MidiEvent] = []
@@ -177,8 +181,6 @@ class MainWindow(QMainWindow):
         f_layout.setColumnStretch(3, 1)
         file_box.setLayout(f_layout)
 
-        # Status
-        self.status = QLabel("Ready")
         tabs = QTabWidget()
         self.keyboard = KeyboardView()
         self.keyboard.setStyleSheet("background: #f7f7f7; border: 1px solid #d0d0d0;")
@@ -187,9 +189,13 @@ class MainWindow(QMainWindow):
         tabs.addTab(self.roll, "Piano Roll")
         layout.addWidget(tabs)
 
+        # Status
+        self.status = QLabel("Ready")
+        self.score_label = QLabel("Score: --")
         layout.addWidget(devices_box)
         layout.addWidget(file_box)
         layout.addWidget(self.status)
+        layout.addWidget(self.score_label)
         root.setLayout(layout)
         self.setCentralWidget(root)
 
@@ -304,6 +310,7 @@ class MainWindow(QMainWindow):
         if self.play_thread and self.play_thread.is_alive():
             self.status.setText("Already playing.")
             return
+        self.performance.reset()
         tempo_mult = self.tempo_slider.value() / 100.0
         transpose = self.transpose_slider.value()
         loop_start = self.loop_start_spin.value()
@@ -315,6 +322,8 @@ class MainWindow(QMainWindow):
             self.current_expected = chords[0].notes if chords else set()
             self.keyboard.set_expected(self.current_expected)
             self.expected_changed.emit(chords[0].time if chords else 0.0, self.current_expected)
+        else:
+            chords = group_expected(self.events, self.learning_channel, self.learning_track)
         self.stop_flag.clear()
         self.play_thread = threading.Thread(
             target=self._playback_loop,
@@ -361,6 +370,12 @@ class MainWindow(QMainWindow):
                 continue
             self.engine.send(msg)
         self.status_changed.emit("Playback finished.")
+        if chords:
+            results = score_performance(chords, self.performance.events)
+            counts = Counter(r.verdict for r in results)
+            total = len(results)
+            summary = f"Score: Perfect={counts.get('PERFECT',0)} Good={counts.get('GOOD',0)} Miss={counts.get('MISS',0)} / {total}"
+            self.score_changed.emit(summary)
 
     def _update_status(self, text: str) -> None:
         self.status.setText(text)
@@ -380,6 +395,9 @@ class MainWindow(QMainWindow):
 
     def on_expected_changed(self, time_sec: float, notes: set[int]) -> None:
         self.roll.highlight_expected(notes, time_sec)
+
+    def on_score_changed(self, text: str) -> None:
+        self.score_label.setText(text)
 
 
 def run() -> None:
