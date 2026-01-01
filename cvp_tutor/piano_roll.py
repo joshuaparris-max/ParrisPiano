@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui import QColor, QBrush, QPen
+from PyQt6.QtGui import QColor, QBrush, QPen, QPainter
 from PyQt6.QtWidgets import QGraphicsScene, QGraphicsView, QVBoxLayout, QWidget
 
 from .models import MidiEvent
@@ -16,7 +16,7 @@ class PianoRollView(QWidget):
         super().__init__(parent)
         self.scene = QGraphicsScene(self)
         self.view = QGraphicsView(self.scene)
-        self.view.setRenderHint(self.view.RenderHint.Antialiasing, False)
+        self.view.setRenderHint(QPainter.RenderHint.Antialiasing, False)
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         layout = QVBoxLayout()
