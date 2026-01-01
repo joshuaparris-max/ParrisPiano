@@ -1,0 +1,14 @@
+.venv/
+logs/
+__pycache__/
+cvp_tutor/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdf
+*.musicxml
+node_modules/
+dist/
+build/
+sheet.js
+start_server.bat

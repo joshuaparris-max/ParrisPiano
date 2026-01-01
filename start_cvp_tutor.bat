@@ -30,9 +30,10 @@ if exist ".venv\Scripts\python.exe" (
 
 echo [CVP Tutor] Installing requirements (first run may take a minute)...
 %PY% -m pip install --upgrade pip >nul
-%PY% -m pip install -r cvp_tutor\requirements.txt
+REM Only install if not already satisfied
+%PY% -m pip install -r cvp_tutor\requirements.txt --disable-pip-version-check
 if errorlevel 1 (
-  echo [CVP Tutor] Failed to install dependencies. Python 3.11 is recommended.
+  echo [CVP Tutor] Failed to install dependencies. Ensure Python 3.11 is installed.
   exit /b 1
 )
 

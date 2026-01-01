@@ -278,11 +278,11 @@ class MainWindow(QMainWindow):
 
     def _find_musescore(self) -> Optional[str]:
         candidates = [
+            "C:\\Program Files\\MuseScore 4\\bin\\MuseScore4.exe",
+            "C:\\Program Files\\MuseScore 3\\bin\\MuseScore3.exe",
             shutil.which("MuseScore4.exe"),
             shutil.which("MuseScore3.exe"),
             shutil.which("MuseScore.exe"),
-            "C:\\Program Files\\MuseScore 4\\bin\\MuseScore4.exe",
-            "C:\\Program Files\\MuseScore 3\\bin\\MuseScore3.exe",
         ]
         for c in candidates:
             if c and Path(c).exists():
