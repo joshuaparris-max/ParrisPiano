@@ -38,6 +38,7 @@ class PianoRollView(QWidget):
         """Render note rectangles for the learning part."""
         self.clear()
         note_starts: Dict[Tuple[int, int | None], float] = {}
+        notes_seen: List[int] = []
         for ev in events:
             msg = ev.message
             if msg.type == "note_on" and msg.velocity > 0:
@@ -46,6 +47,7 @@ class PianoRollView(QWidget):
                 ):
                     continue
                 note_starts[(msg.note, ev.track_index)] = ev.time
+                notes_seen.append(msg.note)
             elif msg.type in {"note_off", "note_on"}:
                 key = (getattr(msg, "note", -1), ev.track_index)
                 if key in note_starts:
@@ -56,6 +58,13 @@ class PianoRollView(QWidget):
         # Any lingering note_on without note_off: draw small blips
         for (note, _), start in note_starts.items():
             self._add_note_rect(note, start, 0.1)
+
+        if notes_seen:
+            self.min_note = min(notes_seen)
+            self.max_note = max(notes_seen)
+        else:
+            self.min_note = 21
+            self.max_note = 108
 
         # Scene bounds
         width = total_time * self.scale_x + 200
