@@ -151,8 +151,73 @@
         </select>
         <div id="midi-status" style="margin-left:auto;color:var(--muted);font-weight:700">Status: <span style="color:var(--accent-2)" id="midi-state">disconnected</span></div>
       </div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <button id="pan-left" class="btn">◀</button>
+        <button id="pan-right" class="btn">▶</button>
+
+        <label style="color:var(--muted);font-weight:700;margin-left:8px;">Range:</label>
+        <select id="key-range" style="padding:6px;border-radius:8px;background:rgba(255,255,255,0.02);color:var(--text);border:1px solid rgba(255,255,255,0.04);">
+          <option value="2">2 octaves</option>
+          <option value="3">3 octaves</option>
+          <option value="4">4 octaves</option>
+          <option value="5">5 octaves</option>
+          <option value="full" selected>Full</option>
+        </select>
+
+        <label style="color:var(--muted);font-weight:700;margin-left:12px;">BPM:</label>
+        <input id="tempo" type="range" min="40" max="200" value="100" style="width:140px">
+        <div id="bpm-value" style="min-width:42px;text-align:center;color:var(--muted);font-weight:700">100</div>
+        <button id="metronome-toggle" class="btn">Start Metronome</button>
+        <div id="beat-indicator" style="margin-left:6px"></div>
+
+        <button id="set-loop-a" class="btn">Set A</button>
+        <button id="set-loop-b" class="btn">Set B</button>
+        <button id="toggle-loop" class="btn">Loop: Off</button>
+        <div id="loop-info" style="min-width:140px;color:var(--muted);font-size:13px;text-align:left;padding-left:8px">A: —  B: —</div>
+        <button id="record-toggle" class="btn">Start Recording</button>
+        <button id="download-recording" class="btn">Download Recording</button>
+        <div id="record-timer" style="min-width:70px;color:var(--muted);font-weight:700">00:00</div>
+
+        <button id="fit-width" class="btn" style="margin-left:auto">Fit Width</button>
+        <button id="dock-toggle" class="btn">Expand Keyboard</button>
+      </div>
+
       <div id="keyboard-container"></div>
       <p style="font-size:13px;color:var(--muted);margin-top:10px;">Note: For full Web MIDI support open this page from <strong>http://localhost</strong> or in a browser that allows MIDI access from file URLs (Chrome usually requires a secure context).</p>
+      <div id="score-panel" style="margin-top:12px;padding:10px;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.03);">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <strong style="color:var(--text)">Live Score</strong>
+          <div style="color:var(--muted);font-size:13px">PERFECT ±50ms · GOOD ±110ms</div>
+          <div style="margin-left:auto;color:var(--muted);font-size:13px">Bars shown: <span id="score-bars-count">8</span></div>
+        </div>
+        <div id="score-bars" style="display:flex;gap:6px;align-items:flex-end;height:56px"></div>
+        <div id="score-summary" style="margin-top:8px;color:var(--muted);font-size:13px">No notes scored yet.</div>
+      </div>
+      <div id="practice-panel" style="margin-top:12px;padding:10px;background:rgba(255,255,255,0.01);border-radius:10px;border:1px solid rgba(255,255,255,0.03);">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <strong style="color:var(--text)">Practice Plan</strong>
+          <div style="color:var(--muted);font-size:13px">Auto-generate short drills from recent scoring.</div>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <button id="gen-plan" class="btn">Generate Plan</button>
+            <button id="download-plan" class="btn">Download Plan</button>
+          </div>
+        </div>
+        <div id="plan-output" style="color:var(--muted);font-size:13px;white-space:pre-wrap">No plan generated yet.</div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="pill">Settings</div>
+      <h2>App Settings</h2>
+      <p>Toggle application-level options. Settings are saved locally.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+        <label style="display:flex;align-items:center;gap:10px;color:var(--muted);">
+          <input type="checkbox" id="hide-keyboard-toggle">
+          <span>Hide On-screen Keyboard</span>
+        </label>
+        <p style="margin:0;color:var(--muted);font-size:13px">Use this to hide the keyboard when you want a minimal UI.</p>
+      </div>
     </article>
     <article class="card">
       <div class="pill">Guided Practice</div>
@@ -260,5 +325,8 @@
     Use your Yamaha USB-MIDI driver for tight latency. <span class="note">Tip:</span> start with Piano Marvel for drills, then jump to DAW/notation when arranging.
   </footer>
   <script src="midi-keyboard.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.27/build/Midi.js"></script>
+  <script src="https://unpkg.com/vexflow/releases/vexflow-min.js"></script>
+  <script src="sheet.js"></script>
 </body>
 </html>

@@ -1,0 +1,707 @@
+﻿Yep — think of it as Synthesia + rhythm “shooter” game + a real coach who remembers you, all driven by what you actually played on the CVP-301 (via MIDI).
+Here’s what needs to exist for that to genuinely work, and what you’d need to specify so an AI autocoder can build it.
+________________
+
+
+The North Star
+“Personalised AI piano teacher” = three loops working together
+1. Play (you perform; app tracks what happened)
+2. Score + Diagnose (what went wrong + why)
+3. Coach + Adapt (what to practise next, and how to make it fun)
+The “shooter” bit is just the game skin on top of that loop.
+________________
+
+
+Core features (what “working” looks like)
+1) Real-time MIDI connection (CVP-301)
+* Auto-detect CVP-301 MIDI In/Out (Yamaha USB-MIDI driver)
+* Low-latency input capture (notes, sustain pedal, velocity)
+* Output playback (backing track / hints / metronome / “ghost notes”)
+Definition of done: press keys → app sees it instantly; app plays MIDI out → piano sounds it.
+________________
+
+
+The “Shooter Teacher” gameplay layer (the fun bit)
+2) Visual note world (the targets)
+You need a rendering system that can show:
+* Note lanes (like a highway) OR a “shooting gallery” where notes become targets
+* Incoming notes scrolling to a “hit line”
+* Chords shown as stacks / clusters
+* Left-hand vs right-hand lanes
+* Sustain zones (pedal overlays)
+Definition of done: load a MIDI → it becomes visible targets with timing.
+3) The shooter mechanics
+A “shooter” variant that maps to piano skills:
+* Notes = targets
+* You “shoot” by playing the right note at the right time
+* Streaks, combos, multipliers
+* Boss moments = big chords / runs
+* Power-ups = perfect timing streak, “slow time”, “hint burst”
+* Miss penalties that teach (not punish): slow down, isolate bar, simplify part
+Definition of done: playing correctly feels like winning a game.
+________________
+
+
+The “teacher brain” (what makes it personalised, not just a game)
+4) Timing engine + musical alignment
+This is where most apps fail unless done properly.
+* Convert MIDI to a timeline (ticks → seconds) with tempo changes handled
+* Support tempo scaling (practice slower)
+* Keep a playhead that can “wait” (guide mode) or run freely (performance mode)
+Definition of done: what you play can be compared to what the song expects.
+5) Scoring engine (accurate + fair)
+You need scoring that understands music, not just “hit/miss”:
+* Pitch accuracy (right notes)
+* Rhythm accuracy (early/late windows)
+* Chord handling (all notes within a window count as “together”)
+* Sustain pedal correctness (optional)
+* Dynamics/velocity (optional)
+* Finger independence metrics (patterns like repeated-note stability)
+Outputs:
+* Per-note judgement (Perfect/Good/Late/Early/Miss/Wrong)
+* Per-bar score and heatmap
+* Mistake clusters (e.g., always late on syncopation)
+Definition of done: after you play, it can tell you exactly what went wrong.
+6) Diagnosis engine (the “why”)
+This turns raw mistakes into coachable insights:
+* “Your left hand is consistently late by ~80ms.”
+* “You’re dropping the 3rd note of chords.”
+* “You rush after rests.”
+* “You lose timing when the melody jumps.”
+This can start rule-based, then become AI-assisted.
+Definition of done: feedback feels specific and true.
+7) Personalisation model (memory + adaptive difficulty)
+You need a per-user profile with:
+* Skill ratings: timing, sight-reading, chord fluency, hand independence, etc.
+* Repertoire history and what’s mastered
+* Weakness tags (auto-generated)
+* Preferred practice length, motivation style, kid mode, etc.
+Then an algorithm that chooses:
+* What to practise next
+* At what tempo
+* How many reps
+* When to revisit (spaced repetition)
+Definition of done: two different people get different practice plans from the same song.
+________________
+
+
+The “AI coach” layer (chat + explanations + planning)
+8) Coaching chat that’s grounded in your performance
+This is the key: the AI shouldn’t waffle — it should reference your data. So you need:
+* A structured “session summary” object (JSON) the AI reads
+* A set of “coach tools” the AI can call:
+   * suggest_exercises()
+   * generate_practice_plan()
+   * explain_rhythm() with visual examples
+   * make_kid_friendly_story_prompt() (optional)
+Definition of done: “You missed F#4 in bars 12–14” not “keep practising!”
+9) Content generation / adaptation (optional but huge)
+To be personalised, the app eventually needs to create variations:
+* Simplify: melody-only, block chords, reduced LH, easier rhythm
+* Loop tricky bars automatically
+* Generate drills (e.g., chord transitions, scale fragments)
+* Auto-fingerings (hard but doable with heuristics)
+Definition of done: it can turn “Let It Go” into “Let It Go (easy)” on the fly.
+________________
+
+
+Song pipeline (how Let It Go becomes learnable)
+10) MIDI ingestion + annotation
+For each MIDI you’ll want:
+* Track/channel detection (melody vs accompaniment)
+* Key signature inference
+* Sections (intro/verse/chorus) — can be manual first
+* “Learning path”: start with melody, then add LH, then full
+Also: file naming + library management.
+Definition of done: click Let It Go → it offers “Melody first / Left hand / Both hands”.
+________________
+
+
+Recording and exporting (so it’s useful beyond the app)
+11) Recording modes
+* Record MIDI performance (notes + pedal) to file
+* Export “performance take” merged with backing track
+* Optional: audio capture (only if you want real CVP sound recorded)
+Definition of done: you can save Sylvie’s “performance” as a file.
+________________
+
+
+Practical essentials (so it doesn’t become a hobby project forever)
+12) Settings, calibration, and reliability
+* Latency calibration (MIDI delay compensation)
+* “Local control” guidance (avoid double notes)
+* Safe startup: ports missing → clear error
+* Profiles (Josh / Sylvie)
+13) Kid mode (if Sylvie’s using it)
+* Big buttons
+* Short sessions (3–7 mins)
+* Reward loop without frustration
+* No destructive actions (can’t delete library accidentally)
+14) Packaging + updates
+* PyInstaller build
+* Auto-update optional
+* Crash logs
+________________
+
+
+How to spec it for an AI autocoder (so it actually builds it)
+Build strategy: 4 milestones (don’t try “everything” at once)
+Milestone 1 — “MIDI Tutor Core”
+* Connect CVP-301 in/out
+* Load MIDI
+* Visual note highway
+* Hit detection + scoring
+* Loop + tempo
+Milestone 2 — “Guide / Wait Mode”
+* Expected chord grouping
+* Wait-until-correct
+* Hint button (plays the chord)
+Milestone 3 — “Shooter Game Mode”
+* Combos, streaks, UI polish
+* Boss sections, power-ups
+* Kid mode profile
+Milestone 4 — “AI Coach + Personalisation”
+* Session summary JSON
+* Rule-based diagnosis
+* AI coach reads the JSON and outputs:
+   * 3 insights
+   * 1 practice plan
+   * 1 encouragement line for kids
+* Skill model + spaced repetition
+Autocoder inputs you must provide
+* Clear definitions for:
+   * “Perfect timing window” (e.g., ±60ms)
+   * Chord window (e.g., 40ms grouping)
+   * What counts as “wrong note”
+   * Whether extra notes are allowed (strict vs forgiving)
+* A sample MIDI (Let It Go) to test with
+* Target resolution + performance requirements (laptop spec)
+________________
+
+
+Two quick questions (so I aim the build right)
+1. Do you want the AI coach fully offline, or are you okay with it using an online model when available?
+2. Is the “shooter” style you want more like note highway (Guitar Hero/Synthesia), or a more literal targets/enemies style?
+If you answer those, I’ll turn this into a super precise spec + mega-prompt that an autocoder can follow without getting lost.
+Gotcha — AI piano teacher, not shooter. Much better (and easier to make genuinely useful).
+Here’s the cleaned-up vision and what you’d need to implement.
+The goal
+A Windows app that connects to your Yamaha CVP-301 via USB-MIDI and becomes a personalised piano teacher that:
+* shows you what to play,
+* listens to what you actually played,
+* corrects you in the moment,
+* and builds a practice plan that adapts over time.
+________________
+
+
+What has to be built (the full “teacher system”)
+1) Connect + listen (MIDI)
+* Detect CVP-301 MIDI input/output
+* Capture: note on/off, velocity, sustain pedal
+* Latency calibration (so timing feedback is fair)
+2) Song library
+* Import MIDI files (e.g., Let It Go)
+* Organise songs + sections (intro/verse/chorus)
+* Track splitting: melody vs accompaniment (or choose tracks manually)
+3) Lesson modes (core teaching)
+A. Follow mode (like Synthesia)
+* Notes scroll or highlight on a keyboard
+* Metronome + count-in
+B. Wait mode (true “teacher”)
+* The app waits until you play the correct note/chord
+* Then advances to the next note/bar
+* Great for kids and beginners
+C. Hands separate
+* Right hand only / left hand only
+* Then “both hands together”
+D. Slow practice
+* Tempo slider (30% → 100%)
+* Auto-speed-up when you get it right 3 times in a row
+4) The “hearing” and scoring engine
+* Pitch accuracy (right notes)
+* Rhythm accuracy (early/late windows)
+* Chord grouping (notes played together count as a chord)
+* Optional: dynamics (velocity) + pedal timing
+* Heatmap: “these bars are consistently hard”
+5) Feedback that feels like a teacher (not a game)
+* “You’re rushing after rests.”
+* “Left hand is late by ~70ms.”
+* “You’re missing the top note in chords.”
+* Suggest one fix at a time:
+   * “Try clapping the rhythm”
+   * “Play LH as block chords first”
+   * “Loop bars 9–12 at 60%”
+This can start rule-based, then later get AI polish.
+6) Personalisation (what makes it “your” teacher)
+A profile that tracks:
+* Your current tempo comfort for each song/section
+* Weak spots (syncopation, jumps, chord changes)
+* Spaced repetition (when to revisit sections)
+* Session length preferences (short kids sessions vs adult practice)
+7) Practice planner
+* Auto-build a 10–20 min session:
+   1. Warmup (easy win)
+   2. 2 tricky loops
+   3. Full run attempt
+   4. Cooldown / success pass
+* “Next best exercise” suggestions
+8) Recording + progress
+* Record your performance (MIDI)
+* Playback with mistakes highlighted
+* Weekly progress graph (tempo up, accuracy up)
+________________
+
+
+Minimum viable version (what to build first)
+If you want something working fast and solid:
+1. MIDI connection to CVP-301
+2. Load MIDI + show notes
+3. Wait mode (advance only when correct)
+4. Loop bars + tempo control
+5. Simple scoring + heatmap
+Once that works, everything else becomes add-ons.
+________________
+
+
+Quick check so I design it right
+Do you want the teacher experience to look more like:
+1. Scrolling notes / falling notes (Synthesia style), or
+2. On-screen keyboard with highlighted keys (simpler + clearer for kids)?
+If you pick 1 or 2, I’ll write you a tight “autocoder spec” (milestones + file structure + acceptance tests) for Windows.
+Sweet — we’ll build both views, as two “skins” over the same lesson engine:
+* Mode 1: Scrolling notes (Synthesia / piano-roll)
+* Mode 2: On-screen keyboard coach (big highlighted keys, great for kids)
+Below is everything that needs to exist so this becomes a real personalised AI piano teacher and is also “autocoder-able” (clear modules + acceptance tests).
+________________
+
+
+The core idea
+One canonical timeline of “what the song expects” (from the MIDI), plus one stream of “what you played” (from the CVP-301 MIDI input). Everything else is UI + coaching logic.
+________________
+
+
+What needs implementing (full checklist)
+1) MIDI connectivity layer (CVP-301)
+* Device discovery + auto-select ports containing CVP-301
+* Reliable MIDI IN capture: note on/off, velocity, sustain (CC64)
+* MIDI OUT playback to the piano (so the CVP makes the sound)
+* Latency calibration (simple: measure roundtrip-ish or let user set an offset)
+* “No MIDI thru by default” (prevents double-notes)
+Done when: pressing keys instantly shows events in the app; app can play a test note through the piano.
+________________
+
+
+2) MIDI file pipeline (the song becomes “learnable”)
+* Load .mid
+* Handle tempo changes + time signatures correctly
+* Create a canonical event list:
+   * time_sec, beat, bar, pitch, on/off, channel, track
+* Part detection:
+   * group by channel/track
+   * let user label “Melody” / “Left hand” / “Accompaniment”
+* Section markers (manual first): intro/verse/chorus + bar ranges
+Done when: you can load Let It Go.mid and see bars/parts and pick a “learning part”.
+________________
+
+
+3) Playback engine
+* Play / pause / stop
+* Tempo multiplier (0.3×–1.2×)
+* Transpose (±12)
+* Loop region (A–B) by bars
+* Metronome + count-in (optional but helpful)
+* Mute/Solo parts; and in Tutor mode: “don’t auto-play learning part”
+Done when: you can loop bars 9–12 at 60% tempo and hear accompaniment through the CVP.
+________________
+
+
+4) Performance capture (what the student played)
+* Real-time note buffer:
+   * track held notes
+   * pedal state
+* Session recording to MIDI (save performance)
+* Per-note timestamps for scoring
+Done when: you can record Sylvie playing and save it as a .mid.
+________________
+
+
+5) Matching + scoring (this is the “teacher ears”)
+* Expected “next moment” builder:
+   * group expected notes into chords (e.g., notes starting within 40ms)
+* Hit windows:
+   * timing tolerance (e.g., Perfect ±40ms, Good ±90ms)
+* Matching modes:
+   * Forgiving: extra notes allowed
+   * Strict: extra notes count against
+* Error types:
+   * wrong pitch, late/early, missed note, incomplete chord
+* Heatmap by bar + summary stats
+Done when: after a run, it can say “you missed F#4 in bars 12–14” and show the bars lighting up.
+________________
+
+
+6) Tutor modes (the actual “teaching”)
+A) Follow mode
+* Song plays; you try to keep up; live feedback on correctness
+B) Wait mode
+* App pauses at each expected note/chord
+* Advances only when you play it correctly
+* “Hint” plays the expected chord softly on the piano
+* “Auto-slow if struggling” rule (optional)
+C) Hands separate
+* Right-only / left-only learning part toggles
+Done when: you can teach Let It Go melody one note/chord at a time, looping tricky bars.
+________________
+
+
+The two UI modes (both backed by the same engine)
+Mode 1 — Scrolling notes (piano roll)
+* Render expected notes as falling/scrolling rectangles
+* Show playhead + hit line
+* Colour feedback (hit/miss/late/early)
+* Works best with loop + slow-down
+Mode 2 — On-screen keyboard coach
+* Draw full keyboard (e.g., 88 keys)
+* Highlight:
+   * expected keys (next note/chord)
+   * pressed keys (what you’re actually playing)
+   * wrong keys (gentle red)
+* Big kid-friendly view, minimal clutter
+Done when: a toggle switches between these views without changing lesson behaviour.
+________________
+
+
+“AI teacher” (personalisation + coaching)
+Start without fancy LLMs — make it truthful and data-driven first, then add AI language polish later.
+7) Diagnosis engine (rule-based v1)
+Turns mistakes into clear coaching:
+* “Consistently late on LH by ~70ms”
+* “Dropping top note of chords”
+* “Rushing after rests”
+* “Timing collapses on jumps > 7 semitones”
+8) Personalisation model (profile)
+Per user:
+* skill ratings (timing, chord fluency, jumps)
+* mastery per section (tempo achieved + accuracy)
+* “next best section” + spaced repetition schedule
+9) Practice planner
+Auto-generate a 5–15 min plan:
+1. Easy win section
+2. 2 loops of hardest bar group
+3. Full chorus run at reduced tempo
+4. Cooldown success pass
+Done when: after each session, it recommends exactly what to practise next for Josh or Sylvie separately.
+________________
+
+
+Packaging + reliability
+* Settings saved (ports, last song, tempo)
+* Crash-safe logging
+* PyInstaller build
+* Clear “double notes” handling guidance (Local Control / MIDI thru)
+________________
+
+
+The build plan for an autocoder (so it actually ships)
+Milestone 1 — MVP teacher engine + both UIs
+* MIDI IN/OUT working
+* Load MIDI → canonical timeline
+* Follow mode scoring
+* Both UI views toggle
+Milestone 2 — Wait mode + loops
+* Expected chord grouping
+* Wait-until-correct
+* A–B loop by bars
+* Hint playback
+Milestone 3 — Library + profiles
+* Song library + sections
+* Multi-user profiles (Josh/Sylvie)
+* Progress tracking + heatmap
+Milestone 4 — “AI teacher” layer
+* Rule-based diagnosis + practice planner
+* Optional: LLM-generated “friendly explanation” fed by structured session JSON
+________________
+
+
+Autocoder mega-prompt (add this to your generator)
+If you want, I’ll write the full repo prompt like last time — but upgraded to include both UI modes + the teacher planner. Before I do, quick: do you want the app to be Python/PyQt6 (fastest for you right now), or Electron/TS (more polish, more work)?
+Cool — I’ll assume Windows + Python/PyQt6 (fastest to ship, easiest to iterate), and we’ll build two teaching views:
+* Piano-roll / scrolling notes (Synthesia style)
+* On-screen keyboard coach (big, simple, kid-friendly)
+Below is the full “everything you’d need” list and a mega-spec you can paste into an AI autocoder.
+________________
+
+
+What “AI piano teacher” actually requires
+A) Foundations
+1) CVP-301 MIDI I/O
+* Auto-detect CVP-301 ports
+* MIDI IN: note on/off, velocity, CC64 (sustain)
+* MIDI OUT: play accompaniment + hints to the piano
+* No “MIDI-thru” by default (prevents double notes)
+* Latency offset setting (so timing feedback isn’t unfair)
+2) MIDI song pipeline
+* Load .mid
+* Correct tick→seconds conversion with tempo map
+* Identify parts by channel/track (melody/accompaniment)
+* Sections by bar ranges (manual first, auto suggestions later)
+3) Canonical timeline A single internal timeline of “expected musical events”:
+* notes with start/end, bar/beat, channel/track
+* grouped into “moments” (single note or chord)
+________________
+
+
+B) Teaching modes
+4) Follow mode
+* Song runs; student plays along
+* Live feedback (right/wrong, early/late)
+* Slowdown + looping
+5) Wait mode
+* App pauses on each expected “moment”
+* Advances only when the correct note/chord is played
+* Hint button plays the next chord softly through the CVP
+6) Hands separate
+* Choose “learning part” (e.g., melody/right hand)
+* Mute that part in playback while accompaniment continues
+________________
+
+
+C) Scoring + diagnosis (the “teacher brain”)
+7) Scoring
+* Pitch accuracy
+* Timing windows (Perfect/Good/Miss)
+* Chord matching (notes within a window count as a chord)
+* Strict vs forgiving matching (extra notes allowed or not)
+8) Diagnosis (rule-based v1)
+* “Consistently late by ~X ms”
+* “Missing top note in chords”
+* “Rushing after rests”
+* “Struggling with jumps > N semitones” Outputs:
+* 3 key insights
+* 1–2 specific drills
+* 1 next-step section + tempo target
+9) Personalisation Profiles (Josh / Sylvie):
+* current comfortable tempo per section
+* weakness tags
+* spaced repetition schedule (what to revisit next session)
+________________
+
+
+D) Two UI modes (same engine, different view)
+10) Piano-roll view
+* scrolling/falling notes to a hit line
+* colour feedback on hits/misses
+11) Keyboard coach view
+* 88-key keyboard rendering
+* highlight “next expected keys”
+* show “pressed keys”
+* gentle wrong-key feedback
+________________
+
+
+What to give an autocoder so it doesn’t get lost
+* Clear modules (engine vs UI)
+* Exact definitions:
+   * chord grouping window (e.g., 40ms)
+   * timing windows (e.g., Perfect ±50ms, Good ±110ms)
+   * strict/forgiving rules
+* Acceptance tests per milestone
+________________
+
+
+Mega-prompt for AI Autocoder (Windows-only, PyQt6, CVP-301)
+ROLE
+You are an expert Windows desktop engineer and MIDI systems developer.
+
+
+GOAL
+Build a Windows-only app “CVP AI Teacher” for Yamaha CVP-301 via USB-MIDI (printer cable). The app teaches MIDI songs with two UI modes:
+(1) Piano-roll scrolling notes, (2) On-screen keyboard coach.
+Must support Follow mode + Wait mode, plus basic personalisation (profiles + practice planner).
+
+
+TECH
+- Python 3.11+
+- PyQt6 for UI
+- mido + python-rtmidi backend for MIDI I/O
+- packaging: PyInstaller
+- logging: stdlib logging -> ./logs/app.log
+- tests: pytest
+
+
+NON-GOALS (for MVP)
+- No audio recording (WAV/MP3) required.
+- No online services required. (Later optional.)
+
+
+REPO STRUCTURE
+/cvp_ai_teacher
+  app.py
+  requirements.txt
+  README.md
+  build.ps1
+  /cvp
+    __init__.py
+    config.py              # load/save settings JSON
+    midi_io.py             # enumerate ports, open in/out, monitor
+    midi_parse.py          # load .mid, tempo map, tick->sec, bar/beat calc
+    timeline.py            # canonical note events + grouping moments
+    playback.py            # scheduler for MIDI OUT, tempo scaling, looping
+    performance.py         # capture MIDI IN into performance events
+    scoring.py             # match expected vs played, timing windows
+    tutor.py               # Follow mode + Wait mode state machine
+    diagnosis.py           # rule-based insights + drill suggestions
+    planner.py             # practice plan generator + spaced repetition
+    models.py              # dataclasses for everything
+  /ui
+    main_window.py
+    widgets/
+      piano_roll.py        # QGraphicsView rendering
+      keyboard_view.py     # 88-key painter widget
+      transport.py         # play/stop/tempo/loop controls
+      part_picker.py       # choose learning part + mute/solo
+      profile_picker.py    # Josh/Sylvie profiles
+      feedback_panel.py    # next chord + messages
+      heatmap.py           # per-bar difficulty
+  /tests
+    test_parse.py
+    test_grouping.py
+    test_scoring.py
+    test_wait_mode.py
+
+
+DATA MODELS (models.py)
+- MidiNoteEvent: pitch, start_sec, end_sec, channel, track, velocity, bar, beat
+- ExpectedMoment: moment_id, time_sec, pitches(set), bar, beat
+- PerformanceEvent: time_sec, pitch, on/off, velocity, channel
+- ScoreEvent: moment_id, result(enum), timing_error_ms, wrong_pitches, missing_pitches
+- Section: name, bar_start, bar_end
+- UserProfile: name, settings, section_mastery dict, weakness_tags
+- SessionSummary: per_bar_stats, overall_stats, top_issues, recommended_next
+
+
+MIDI I/O (midi_io.py)
+- list_input_ports(), list_output_ports()
+- auto_select ports containing "CVP-301"
+- MidiManager.open(input_name, output_name)
+- midi monitor callback emits parsed events to UI
+- IMPORTANT: do NOT echo incoming notes back out by default
+
+
+MIDI PARSING (midi_parse.py)
+- Load MidiFile
+- Build tempo map (support tempo changes)
+- Convert ticks->seconds correctly
+- Determine bar/beat using time signature (assume default 4/4 if missing)
+- Extract note on/off into MidiNoteEvent list
+- Also extract sustain CC64 events
+- Provide “parts” as channel groups with counts and name hints (track name meta)
+
+
+TIMELINE (timeline.py)
+- Build ExpectedMoment list from selected learning part:
+  - Group NoteOn that start within CHORD_WINDOW_MS (default 40ms) into one moment
+  - Each moment expects a set of pitches
+- Provide mapping from bar -> moment_ids for heatmap
+
+
+PLAYBACK (playback.py)
+- Scheduler uses perf_counter in a worker thread
+- Features: Play/Pause/Stop, tempo multiplier (0.3..1.2), transpose (-12..+12), loop by bar range
+- When Tutor Wait mode ON: freeze time during waits
+- Playback sends accompaniment parts to MIDI OUT (muted/solo respected)
+- Learning part is NOT auto-played during Tutor mode; but can be in listen-only mode
+
+
+PERFORMANCE CAPTURE (performance.py)
+- Track held notes + sustain state
+- Provide a “chord buffer” for matching: notes played within a small window
+- Record session to a new .mid (MVP record: store note on/off + sustain with timings)
+
+
+SCORING (scoring.py)
+- Timing windows:
+  - PERFECT_MS = 50
+  - GOOD_MS = 110
+- Match rule:
+  - forgiving: played pitches must be a superset containing expected pitches (extra allowed)
+  - strict: played pitches must equal expected pitches
+- Compute timing error using first matching note time vs expected moment time
+- Produce ScoreEvent list + per-bar aggregates
+
+
+TUTOR ENGINE (tutor.py)
+- Modes: FOLLOW, WAIT
+- FOLLOW: continuously score as student plays; no pausing.
+- WAIT: advance moment-by-moment:
+  - show Next expected pitches
+  - wait until performance buffer matches expected chord (strict/forgiving)
+  - on match: mark correct, advance immediately
+  - Hint button: play expected pitches softly via MIDI OUT for 250ms (velocity 30) then send NoteOff
+
+
+DIAGNOSIS + PLANNER
+- diagnosis.py:
+  - Rule-based insights:
+    - consistent lateness/earliness bias
+    - frequent missing notes in chords
+    - difficulty spikes by bar
+    - jump size errors (interval > N)
+  - Output top 3 issues + 2 drills suggestions
+- planner.py:
+  - Generate 5–15 min session plan based on profile:
+    1) Warmup section easiest
+    2) Hardest 2 bar-ranges looped at reduced tempo
+    3) Chorus run at target tempo
+    4) Success pass at easier tempo
+  - Update profile mastery after each session (tempo+accuracy thresholds)
+  - Simple spaced repetition: revisit hard sections every N days
+
+
+UI (PyQt6)
+- Main window tabs:
+  - Library (import MIDI, sections)
+  - Lesson (two modes toggle: PianoRoll / KeyboardCoach)
+  - Progress (heatmap, trends)
+  - Settings (ports, windows, strictness)
+- Lesson screen:
+  - Transport: Play/Stop, Tempo slider, Loop A/B by bar, Transpose
+  - Part picker: choose learning part, mute/solo other parts
+  - Mode switch: Follow vs Wait
+  - View switch: PianoRoll vs KeyboardCoach
+  - Feedback panel: Next chord + result messages
+  - Profile picker: Josh / Sylvie
+- Ensure UI remains responsive: playback and MIDI callbacks must not block UI thread.
+
+
+ACCEPTANCE TESTS
+- With CVP connected:
+  - Pressing keys shows NoteOn/Off in monitor within 50ms.
+  - Test Tone plays on CVP.
+- Load a MIDI:
+  - Piano roll renders notes and playhead moves.
+  - Keyboard view highlights next expected notes.
+- Wait mode:
+  - Playback pauses until correct chord played; then advances.
+- Record:
+  - Record session produces a .mid that replays notes correctly.
+
+
+BUILD
+- requirements.txt
+- build.ps1 uses pyinstaller to create dist/CVP-AI-Teacher
+- README includes setup, driver note, and “double notes” troubleshooting.
+
+
+Now generate the entire repository with full code, not stubs.
+
+
+________________
+
+
+Quick preference (so the teacher feels right for Sylvie)
+Do you want Wait mode to require:
+* Single notes only at first (kid mode), even if the song has chords,
+or
+* True chords (more accurate, harder)?
+If you say “kid mode”, I’ll bake in an auto-simplify step: chords → top note only (melody-first), then graduate to full chords later.
