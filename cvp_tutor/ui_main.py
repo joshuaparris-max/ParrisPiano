@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
     QSlider,
     QVBoxLayout,
     QWidget,
+    QTabWidget,
 )
 
 from .midi_io import MidiIO
@@ -36,6 +37,7 @@ from .playback import PlaybackEngine
 from .timeline import group_expected
 from .performance import PerformanceCapture
 from .keyboard_view import KeyboardView
+from .piano_roll import PianoRollView
 
 
 def _clamp_note(value: int) -> int:
@@ -44,6 +46,7 @@ def _clamp_note(value: int) -> int:
 
 class MainWindow(QMainWindow):
     status_changed = pyqtSignal(str)
+    expected_changed = pyqtSignal(float, object)  # time_sec, notes set
 
     def __init__(self) -> None:
         super().__init__()
@@ -54,6 +57,7 @@ class MainWindow(QMainWindow):
         self.tutor = TutorEngine()
         self.performance = PerformanceCapture(self.engine)
         self.engine.register_listener(self.on_midi_in)
+        self.expected_changed.connect(self.on_expected_changed)
         self.midi_file: Optional[Path] = None
         self.parts: List[MidiPart] = []
         self.events: List[MidiEvent] = []
@@ -73,10 +77,14 @@ class MainWindow(QMainWindow):
     def _build_ui(self) -> None:
         root = QWidget()
         layout = QVBoxLayout()
+        layout.setContentsMargins(12, 8, 12, 12)
+        layout.setSpacing(10)
 
         # Devices
         devices_box = QGroupBox("MIDI Devices")
         d_layout = QGridLayout()
+        d_layout.setHorizontalSpacing(8)
+        d_layout.setVerticalSpacing(6)
         self.in_combo = QComboBox()
         self.out_combo = QComboBox()
         refresh_btn = QPushButton("Refresh")
@@ -87,17 +95,22 @@ class MainWindow(QMainWindow):
         test_btn.clicked.connect(self.test_tone)
 
         d_layout.addWidget(QLabel("Input"), 0, 0)
-        d_layout.addWidget(self.in_combo, 0, 1)
+        d_layout.addWidget(self.in_combo, 0, 1, 1, 2)
+        d_layout.addWidget(refresh_btn, 0, 3)
+        d_layout.addWidget(test_btn, 0, 4)
         d_layout.addWidget(QLabel("Output"), 1, 0)
-        d_layout.addWidget(self.out_combo, 1, 1)
-        d_layout.addWidget(refresh_btn, 0, 2)
-        d_layout.addWidget(connect_btn, 1, 2)
-        d_layout.addWidget(test_btn, 0, 3, 2, 1)
+        d_layout.addWidget(self.out_combo, 1, 1, 1, 2)
+        d_layout.addWidget(connect_btn, 1, 3, 1, 2)
+        d_layout.setColumnStretch(1, 2)
+        d_layout.setColumnStretch(2, 1)
+        d_layout.setColumnStretch(3, 1)
         devices_box.setLayout(d_layout)
 
         # File controls
         file_box = QGroupBox("Song")
         f_layout = QGridLayout()
+        f_layout.setHorizontalSpacing(8)
+        f_layout.setVerticalSpacing(6)
         self.file_label = QLabel("No file loaded")
         self.learning_part_combo = QComboBox()
         self.learning_part_combo.currentIndexChanged.connect(self._part_changed)
@@ -140,26 +153,39 @@ class MainWindow(QMainWindow):
 
         f_layout.addWidget(open_btn, 0, 0)
         f_layout.addWidget(self.file_label, 0, 1, 1, 3)
+
         f_layout.addWidget(self.sheet_btn, 1, 0)
         f_layout.addWidget(self.export_btn, 1, 1)
-        f_layout.addWidget(QLabel("Learning Part"), 1, 0)
-        f_layout.addWidget(self.learning_part_combo, 1, 2)
+        f_layout.addWidget(QLabel("Learning Part"), 1, 2)
+        f_layout.addWidget(self.learning_part_combo, 1, 3)
+
         f_layout.addWidget(self.play_btn, 2, 0)
         f_layout.addWidget(self.stop_btn, 2, 1)
         f_layout.addWidget(self.tutor_toggle, 2, 2, 1, 2)
+
         f_layout.addWidget(self.tempo_label, 3, 0)
         f_layout.addWidget(self.tempo_slider, 3, 1, 1, 3)
+
         f_layout.addWidget(self.transpose_label, 4, 0)
         f_layout.addWidget(self.transpose_slider, 4, 1, 1, 3)
+
         f_layout.addWidget(loop_label, 5, 0)
         f_layout.addWidget(self.loop_start_spin, 5, 1)
         f_layout.addWidget(self.loop_end_spin, 5, 2)
+        f_layout.setColumnStretch(1, 1)
+        f_layout.setColumnStretch(2, 1)
+        f_layout.setColumnStretch(3, 1)
         file_box.setLayout(f_layout)
 
         # Status
         self.status = QLabel("Ready")
+        tabs = QTabWidget()
         self.keyboard = KeyboardView()
-        layout.addWidget(self.keyboard)
+        self.keyboard.setStyleSheet("background: #f7f7f7; border: 1px solid #d0d0d0;")
+        self.roll = PianoRollView()
+        tabs.addTab(self.keyboard, "Keyboard")
+        tabs.addTab(self.roll, "Piano Roll")
+        layout.addWidget(tabs)
 
         layout.addWidget(devices_box)
         layout.addWidget(file_box)
@@ -211,6 +237,7 @@ class MainWindow(QMainWindow):
         self.midi_file = path
         self.parts, self.events, self.total_time = parse_midi(path)
         self.performance.reset()
+        self.roll.load_notes(self.events, self.learning_channel, self.learning_track, self.total_time)
         self.file_label.setText(f"{path.name} ({self.total_time:.1f}s)")
         self.learning_part_combo.clear()
         for idx, part in enumerate(self.parts):
@@ -228,6 +255,8 @@ class MainWindow(QMainWindow):
         self.learning_track = part.track_index
         self.current_expected = set()
         self.keyboard.set_expected(set())
+        if self.midi_file:
+            self.roll.load_notes(self.events, self.learning_channel, self.learning_track, self.total_time)
 
     def open_sheet_music(self) -> None:
         url = "https://drive.google.com/drive/folders/0B6bODXWhwMjKdDU3U1p3bjFmLTA?resourcekey=0-aQ1yhQwnHbthIVjs5_ry_g&usp=sharing"
@@ -285,6 +314,7 @@ class MainWindow(QMainWindow):
             chords = group_expected(self.events, self.learning_channel, self.learning_track)
             self.current_expected = chords[0].notes if chords else set()
             self.keyboard.set_expected(self.current_expected)
+            self.expected_changed.emit(chords[0].time if chords else 0.0, self.current_expected)
         self.stop_flag.clear()
         self.play_thread = threading.Thread(
             target=self._playback_loop,
@@ -322,6 +352,7 @@ class MainWindow(QMainWindow):
                 self.current_expected = expected.notes
                 self.status_changed.emit(f"Next: {sorted(expected.notes)}")
                 self.keyboard.set_expected(self.current_expected)
+                self.expected_changed.emit(expected.time, expected.notes)
                 matched = self.engine.wait_for_notes(expected.notes, timeout=10, strict=self.tutor.strict)
                 status = "matched" if matched else "timeout"
                 self.status_changed.emit(f"Tutor: expected {expected.notes} -> {status}")
@@ -346,6 +377,9 @@ class MainWindow(QMainWindow):
             except KeyError:
                 pass
         self.keyboard.update()
+
+    def on_expected_changed(self, time_sec: float, notes: set[int]) -> None:
+        self.roll.highlight_expected(notes, time_sec)
 
 
 def run() -> None:
