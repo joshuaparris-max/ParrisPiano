@@ -28,3 +28,8 @@ Milestone 5 — AI Coach (optional)
 Notes:
 - Ship Milestone 1 as a fast, stable desktop app (PyQt6 + mido/rtmidi recommended).
 - Keep all I/O non-blocking; use worker threads for playback and MIDI processing.
+- Library accelerators:
+  - M1 visuals: study PyPiano (Synthesia clone) for falling-note math and hit-line timing.
+  - M2 wait mode: reuse DTW from librosa or the Matchmaker score-following library to align live MIDI to score.
+  - M4 diagnosis: use music21 to detect chords/keys/interval errors from PerformanceEvent streams.
+  - M5 drills: MusPy to auto-generate scale/arpeggio MIDI for targeted practice.

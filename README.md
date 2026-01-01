@@ -32,12 +32,9 @@ Next steps:
   - `python app.py`
 - Build one-file exe: `.\build.ps1`
 - Features: MIDI in/out selection, Test Tone, load .mid, tempo/transpose/loop, Tutor wait-mode, learning part selection, logging to `logs/app.log`.
-## CVP Tutor desktop app (Windows)
-- Code lives in `cvp_tutor/`. Launch with:
-  - `cd cvp_tutor`
-  - `python -m venv .venv`
-  - `.venv\Scripts\activate`
-  - `pip install -r requirements.txt`
-  - `python app.py`
-- Build one-file exe: `.uild.ps1`
-- Features: MIDI in/out selection, Test Tone, load .mid, tempo/transpose/loop, Tutor wait-mode, learning part selection, logging to `logs/app.log`.
+
+Recommended libraries (already listed in `cvp_tutor/requirements.txt`):
+- `music21` for chord/key/interval detection in diagnosis.
+- `librosa` or `Matchmaker` for wait-mode DTW alignment (install on demand).
+- `MusPy` for generating drills (scales/arpeggios) based on diagnosis output.
+- Study PyPiano (GitHub) for falling-note visual math; do not copy its PyGame UI directly.

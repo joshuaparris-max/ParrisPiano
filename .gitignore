@@ -14,6 +14,7 @@ sheet.js
 start_server.bat
 
 # Ignore large vendor and binary directories
+CVP301/
 CVP301/**/cvp301_v180/**
 CVP301/freepiano_2.2.2.1_win64/**
 CVP301/ableton_live_trial_12.3.2_64/**
@@ -28,9 +29,13 @@ CVP301/**/*.lnk
 *.sf2
 *.exe
 *.dll
+*.msi
+*.mp3
+*.wav
 *.zip
 *.7z
 *.bin
+*.lnk
 
 # Samples (skip if large) - adjust if you want sample assets committed
 samples/
