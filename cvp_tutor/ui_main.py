@@ -243,8 +243,9 @@ class MainWindow(QMainWindow):
         self.midi_file = path
         self.parts, self.events, self.total_time = parse_midi(path)
         self.performance.reset()
-        self.roll.load_notes(self.events, self.learning_channel, self.learning_track, self.total_time)
+        count = self.roll.load_notes(self.events, self.learning_channel, self.learning_track, self.total_time, show_all=True)
         self.file_label.setText(f"{path.name} ({self.total_time:.1f}s)")
+        self.status.setText(f"Loaded {count} notes into Piano Roll")
         self.learning_part_combo.clear()
         for idx, part in enumerate(self.parts):
             ch = f"ch {part.channel}" if part.channel is not None else "ch ?"
@@ -262,7 +263,8 @@ class MainWindow(QMainWindow):
         self.current_expected = set()
         self.keyboard.set_expected(set())
         if self.midi_file:
-            self.roll.load_notes(self.events, self.learning_channel, self.learning_track, self.total_time)
+            count = self.roll.load_notes(self.events, self.learning_channel, self.learning_track, self.total_time, show_all=True)
+            self.status.setText(f"Piano Roll notes: {count}")
 
     def open_sheet_music(self) -> None:
         url = "https://drive.google.com/drive/folders/0B6bODXWhwMjKdDU3U1p3bjFmLTA?resourcekey=0-aQ1yhQwnHbthIVjs5_ry_g&usp=sharing"

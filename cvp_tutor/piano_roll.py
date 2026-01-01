@@ -34,8 +34,8 @@ class PianoRollView(QWidget):
         self.scene.clear()
         self.note_items = []
 
-    def load_notes(self, events: Iterable[MidiEvent], learning_channel: int | None, learning_track: int | None, total_time: float) -> None:
-        """Render note rectangles for the learning part."""
+    def load_notes(self, events: Iterable[MidiEvent], learning_channel: int | None, learning_track: int | None, total_time: float, show_all: bool = False) -> int:
+        """Render note rectangles for the learning part (or all parts if show_all). Returns note count."""
         self.clear()
         note_starts: Dict[Tuple[int, int | None], float] = {}
         notes_seen: List[int] = []
@@ -43,10 +43,11 @@ class PianoRollView(QWidget):
         for ev in events:
             msg = ev.message
             if msg.type == "note_on" and msg.velocity > 0:
-                if (learning_channel is not None and msg.channel != learning_channel) or (
-                    learning_track is not None and ev.track_index != learning_track
-                ):
-                    continue
+                if not show_all:
+                    if (learning_channel is not None and msg.channel != learning_channel) or (
+                        learning_track is not None and ev.track_index != learning_track
+                    ):
+                        continue
                 note_starts[(msg.note, ev.track_index)] = ev.time
                 notes_seen.append(msg.note)
             elif msg.type in {"note_off", "note_on"}:
@@ -75,6 +76,7 @@ class PianoRollView(QWidget):
         height = (self.max_note - self.min_note + 1) * self.note_h
         self.scene.setSceneRect(0, 0, width, height)
         self.view.centerOn(0, height / 2)
+        return len(intervals)
 
     def _add_note_rect(self, note: int, start: float, dur: float) -> None:
         x = start * self.scale_x
