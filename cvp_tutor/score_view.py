@@ -23,13 +23,18 @@ class ScoreView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         if QWebEngineView is None:
             self.label.setText(f"Score view unavailable: { _IMPORT_ERROR }")
-            layout.addWidget(self.label)
             self.view = None
-        else:
-            self.view = QWebEngineView()
-            self.label.setText("No score loaded")
-            layout.addWidget(self.view)
             layout.addWidget(self.label)
+        else:
+            try:
+                self.view = QWebEngineView()
+                layout.addWidget(self.view)
+                self.label.setText("No score loaded")
+                layout.addWidget(self.label)
+            except Exception as exc:  # pragma: no cover
+                self.view = None
+                self.label.setText(f"Score view disabled (WebEngine init failed): {exc}")
+                layout.addWidget(self.label)
         self.setLayout(layout)
 
     def load_pdf(self, path: Path) -> None:
