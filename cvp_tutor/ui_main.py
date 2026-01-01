@@ -32,6 +32,7 @@ from .tutor_engine import TutorEngine
 from .playback import PlaybackEngine
 from .timeline import group_expected
 from .performance import PerformanceCapture
+from .keyboard_view import KeyboardView
 
 
 def _clamp_note(value: int) -> int:
@@ -49,6 +50,7 @@ class MainWindow(QMainWindow):
         self.playback = PlaybackEngine(self.engine)
         self.tutor = TutorEngine()
         self.performance = PerformanceCapture(self.engine)
+        self.engine.register_listener(self.on_midi_in)
         self.midi_file: Optional[Path] = None
         self.parts: List[MidiPart] = []
         self.events: List[MidiEvent] = []
@@ -59,6 +61,7 @@ class MainWindow(QMainWindow):
         self.loop_end: Optional[float] = None
         self.learning_channel: Optional[int] = None
         self.learning_track: Optional[int] = None
+        self.current_expected: set[int] = set()
 
         self._build_ui()
         self.status_changed.connect(self._update_status)
@@ -146,6 +149,8 @@ class MainWindow(QMainWindow):
 
         # Status
         self.status = QLabel("Ready")
+        self.keyboard = KeyboardView()
+        layout.addWidget(self.keyboard)
 
         layout.addWidget(devices_box)
         layout.addWidget(file_box)
@@ -212,6 +217,8 @@ class MainWindow(QMainWindow):
             return
         self.learning_channel = part.channel
         self.learning_track = part.track_index
+        self.current_expected = set()
+        self.keyboard.set_expected(set())
 
     def _tempo_changed(self, value: int) -> None:
         self.tempo_label.setText(f"Tempo {value/100:.2f}x")
@@ -234,6 +241,8 @@ class MainWindow(QMainWindow):
         chords = []
         if tutor_on:
             chords = group_expected(self.events, self.learning_channel, self.learning_track)
+            self.current_expected = chords[0].notes if chords else set()
+            self.keyboard.set_expected(self.current_expected)
         self.stop_flag.clear()
         self.play_thread = threading.Thread(
             target=self._playback_loop,
@@ -268,15 +277,33 @@ class MainWindow(QMainWindow):
             if tutor_on and is_learning_part and msg.type == "note_on" and chord_idx < len(chords):
                 expected = chords[chord_idx]
                 chord_idx += 1
+                self.current_expected = expected.notes
+                self.status_changed.emit(f"Next: {sorted(expected.notes)}")
+                self.keyboard.set_expected(self.current_expected)
                 matched = self.engine.wait_for_notes(expected.notes, timeout=10, strict=self.tutor.strict)
                 status = "matched" if matched else "timeout"
                 self.status_changed.emit(f"Tutor: expected {expected.notes} -> {status}")
+                self.current_expected = set()
+                self.keyboard.set_expected(set())
                 continue
             self.engine.send(msg)
         self.status_changed.emit("Playback finished.")
 
     def _update_status(self, text: str) -> None:
         self.status.setText(text)
+        # Update held keys on MIDI input
+        # (PerformanceCapture already collects; here we only track current pressed)
+        # This runs in UI thread from signal; for simplicity the held state is set by incoming listener below.
+
+    def on_midi_in(self, msg: mido.Message) -> None:
+        if msg.type == "note_on" and msg.velocity > 0:
+            self.keyboard.held_notes.add(msg.note)
+        elif msg.type in {"note_off", "note_on"}:
+            try:
+                self.keyboard.held_notes.remove(msg.note)
+            except KeyError:
+                pass
+        self.keyboard.update()
 
 
 def run() -> None:
