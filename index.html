@@ -70,6 +70,9 @@
       border-color: rgba(255,122,92,0.3);
       box-shadow: 0 24px 70px rgba(0,0,0,0.5);
     }
+    #midi-card {
+      grid-column: 1 / -1;
+    }
     .pill {
       display: inline-flex;
       align-items: center;
@@ -205,6 +208,14 @@
         </div>
         <div id="plan-output" style="color:var(--muted);font-size:13px;white-space:pre-wrap">No plan generated yet.</div>
       </div>
+      <div id="practice-history-panel" style="margin-top:12px;padding:10px;background:rgba(255,255,255,0.01);border-radius:10px;border:1px solid rgba(255,255,255,0.03);">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <strong style="color:var(--text)">Practice History</strong>
+          <div style="color:var(--muted);font-size:13px">Your last ten recorded sessions stay on this device.</div>
+          <button id="clear-practice-history" class="btn" style="margin-left:auto">Clear History</button>
+        </div>
+        <div id="practice-history" style="display:grid;gap:8px;color:var(--muted);font-size:13px">No recorded sessions yet.</div>
+      </div>
     </article>
 
     <article class="card">
@@ -327,6 +338,5 @@
   <script src="midi-keyboard.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.27/build/Midi.js"></script>
   <script src="https://unpkg.com/vexflow/releases/vexflow-min.js"></script>
-  <script src="sheet.js"></script>
 </body>
 </html>

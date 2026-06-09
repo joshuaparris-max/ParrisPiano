@@ -67,6 +67,43 @@
   let loopStart = null;
   let loopEnd = null;
   let loopEnabled = false;
+  const PRACTICE_HISTORY_KEY = 'practiceHistory';
+
+  function getPracticeHistory(){
+    try{
+      const saved = JSON.parse(localStorage.getItem(PRACTICE_HISTORY_KEY) || '[]');
+      return Array.isArray(saved) ? saved : [];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function renderPracticeHistory(){
+    const container = document.getElementById('practice-history');
+    if(!container) return;
+    const history = getPracticeHistory();
+    if(!history.length){
+      container.textContent = 'No recorded sessions yet.';
+      return;
+    }
+    container.innerHTML = history.map(entry => `
+      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.03)">
+        <strong style="color:var(--text)">${new Date(entry.recordedAt).toLocaleString()}</strong>
+        <span>${entry.durationSeconds}s</span>
+        <span>${entry.notes} notes</span>
+        <span>${entry.accuracy}% accuracy</span>
+        <span>${entry.bpm} BPM</span>
+      </div>
+    `).join('');
+  }
+
+  function savePracticeHistory(entry){
+    try{
+      const history = [entry, ...getPracticeHistory()].slice(0, 10);
+      localStorage.setItem(PRACTICE_HISTORY_KEY, JSON.stringify(history));
+      renderPracticeHistory();
+    }catch(e){ console.warn('save practice history error', e); }
+  }
 
   function ensureAudio(){
     if(!audioCtx){
@@ -365,6 +402,7 @@
   }
 
   function stopRecording(){
+    const durationSeconds = Math.max(1, Math.round(nowSeconds() - recordStart));
     recording = false;
     if(recordTimer){ clearInterval(recordTimer); recordTimer = null; }
     const btn = document.getElementById('record-toggle'); if(btn) btn.textContent = 'Start Recording';
@@ -373,6 +411,15 @@
       const meta = { recordedAt: new Date().toISOString(), source: (currentInput && currentInput.name) ? currentInput.name : 'unknown', bpm: metronomeBpm };
       const saved = { meta, events: recordedEvents };
       localStorage.setItem('lastRecording', JSON.stringify(saved));
+      const total = Object.values(perBarStats).reduce((sum, bar) => sum + bar.total, 0);
+      const strong = Object.values(perBarStats).reduce((sum, bar) => sum + bar.perfect + (bar.good * 0.7), 0);
+      savePracticeHistory({
+        recordedAt: meta.recordedAt,
+        durationSeconds,
+        notes: recordedEvents.filter(event => (event.data?.[0] & 0xf0) === 0x90 && event.data?.[2] > 0).length,
+        accuracy: total ? Math.round((strong / total) * 100) : 0,
+        bpm: metronomeBpm,
+      });
     }catch(e){ console.warn('save recording error', e); }
   }
 
@@ -477,11 +524,20 @@
     const dlPlan = document.getElementById('download-plan');
     if(genBtn) genBtn.addEventListener('click', ()=>{ const plan = generatePracticePlan(); displayPlan(plan); try{ localStorage.setItem('lastPlan', JSON.stringify(plan)); }catch(e){} });
     if(dlPlan) dlPlan.addEventListener('click', ()=>{ const p = localStorage.getItem('lastPlan'); if(!p){ alert('No plan to download — generate one first.'); return; } downloadPlan(JSON.parse(p)); });
+    const clearPracticeHistory = document.getElementById('clear-practice-history');
+    if(clearPracticeHistory) clearPracticeHistory.addEventListener('click', ()=>{
+      if(window.confirm('Clear saved practice history from this browser?')){
+        localStorage.removeItem(PRACTICE_HISTORY_KEY);
+        renderPracticeHistory();
+      }
+    });
+    renderPracticeHistory();
 
-    // ensure docked and controls reflect default large view
-    document.body.classList.add('keyboard-docked');
-    dockBtn.textContent = 'Close Keyboard';
-    fitBtn.textContent = fitWidth ? 'Fixed Size' : 'Fit Width';
+    // Start with the keyboard in-page so the rest of the practice desk stays visible.
+    document.body.classList.remove('keyboard-docked');
+    dockBtn.textContent = 'Expand Keyboard';
+    fitWidth = true;
+    fitBtn.textContent = 'Fixed Size';
     createKeyboard(cont);
     window.addEventListener('resize', ()=>{ if(fitWidth) fitKeysToWidth(cont); });
     initMIDI();

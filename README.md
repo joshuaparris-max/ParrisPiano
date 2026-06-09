@@ -22,6 +22,10 @@ Next steps:
 - Install the Yamaha USB-MIDI driver, then update the CVP firmware.
 - Pick a DAW (Cakewalk or Tracktion), then add your preferred practice/visualizer tool.
 
+## Browser practice hub
+- Open `index.html` through a local web server to use Web MIDI, the metronome, loop markers, recording, and timing feedback.
+- The last ten completed recordings are summarized in local practice history with duration, note count, timing accuracy, and BPM.
+
 ## CVP Tutor desktop app (Windows)
 - Easiest start: double-click `start_cvp_tutor.bat` (handles venv + deps, then launches).
 - Manual: 
